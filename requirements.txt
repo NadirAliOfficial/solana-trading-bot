@@ -1,0 +1,6 @@
+jupiter-python-sdk
+solders
+solana
+aiohttp
+base58
+base64
