@@ -1,6 +1,7 @@
 # Solana Automated Trading Bot with Jupiter SDK
 
-![Solana Logo](https://cryptologos.cc/logos/solana-sol-logo.png)
+<img src="https://cryptologos.cc/logos/solana-sol-logo.png" alt="Solana Logo" width="200" />
+
 
 ## Table of Contents
 
