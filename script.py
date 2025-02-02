@@ -14,6 +14,7 @@ from solana.rpc.types import TxOpts
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Processed
 from jupiter_python_sdk.jupiter import Jupiter, Jupiter_DCA
+from dotenv import load_dotenv
 import aiohttp
 
 # --------------------------------------------------
@@ -21,8 +22,13 @@ import aiohttp
 # --------------------------------------------------
 
 # Environment Variables
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")  # Replace with your private key env variable name
-SOLANA_RPC_ENDPOINT = os.getenv("SOLANA_RPC_ENDPOINT")  # e.g., "https://api.mainnet-beta.solana.com"
+""" PRIVATE_KEY = os.getenv("PRIVATE_KEY")  # Replace with your private key env variable name
+SOLANA_RPC_ENDPOINT = os.getenv("SOLANA_RPC_ENDPOINT")  # e.g., "https://api.mainnet-beta.solana.com" """
+
+load_dotenv()
+
+PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
+SOLANA_RPC_ENDPOINT = os.environ.get("SOLANA_RPC_ENDPOINT")
 
 # Initialize Keypair
 private_key = Keypair.from_bytes(base58.b58decode(PRIVATE_KEY))
@@ -31,11 +37,23 @@ private_key = Keypair.from_bytes(base58.b58decode(PRIVATE_KEY))
 async_client = AsyncClient(SOLANA_RPC_ENDPOINT)
 
 # Initialize Jupiter SDK
-jupiter = Jupiter(
+""" jupiter = Jupiter(
     async_client=async_client,
     keypair=private_key,
     quote_api_url="https://quote-api.jup.ag/v6/quote",
     swap_api_url="https://quote-api.jup.ag/v6/swap",
+    open_order_api_url="https://jup.ag/api/limit/v1/createOrder",
+    cancel_orders_api_url="https://jup.ag/api/limit/v1/cancelOrders",
+    query_open_orders_api_url="https://jup.ag/api/limit/v1/openOrders?wallet=",
+    query_order_history_api_url="https://jup.ag/api/limit/v1/orderHistory",
+    query_trade_history_api_url="https://jup.ag/api/limit/v1/tradeHistory"
+) """
+
+jupiter = Jupiter(
+    async_client=async_client,
+    keypair=private_key,
+    quote_api_url="https://api.jup.ag/swap/v1/quote",
+    swap_api_url="https://api.jup.ag/swap/v1/swap",
     open_order_api_url="https://jup.ag/api/limit/v1/createOrder",
     cancel_orders_api_url="https://jup.ag/api/limit/v1/cancelOrders",
     query_open_orders_api_url="https://jup.ag/api/limit/v1/openOrders?wallet=",
@@ -319,7 +337,7 @@ async def create_dca_account(jupiter_instance: Jupiter, input_mint: str, output_
             cycle_frequency=cycle_frequency,
             min_out_amount_per_cycle=min_out_amount_per_cycle,
             max_out_amount_per_cycle=max_out_amount_per_cycle,
-            start=start
+            start_at=start
         )
         print(f"[SUCCESS] DCA Account created: {dca_account}, Transaction Hash: {txn_hash}")
         return str(dca_account)
@@ -473,7 +491,7 @@ async def main():
     final_list = await advanced_filter_solana_tokens()
     
     # Define Budget and Investment Percentages
-    total_budget = 305  # USD
+    total_budget = 10  # USD
     investment_percentages = [5, 10, 15, 20]
     
     # Set Up Trades
@@ -506,11 +524,23 @@ async def fetch_current_price(token_address: str) -> float:
     Implement this function based on your data source.
     """
     try:
-        url = f"https://api.dexscreener.com/latest/dex/tokens/solana/{token_address}"
+        url = f"https://api.dexscreener.com/token-pairs/v1/solana/{token_address}"
+        print(f"GET Url {url}")
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=10) as response:
+                print(f"Getting data")
                 data = await response.json()
-                price = float(data['price']['currentPrice'])  # Adjust based on actual response structure
+                print(f"Getting price parameter")
+                response = data[0]
+
+                # DEBUG
+                # priceUSD = response['priceUsd']
+                # print(f"priceUSD is : {priceUSD}")
+                # for i, row in enumerate(data):
+                    # for j, value in enumerate(row):
+                        # print(f"Index [{i}, {j}]: {value}")
+
+                price = float(response['priceUsd'])  # Adjust based on actual response structur
                 return price
     except Exception as e:
         print(f"[ERROR] Could not fetch current price for {token_address}: {e}")
