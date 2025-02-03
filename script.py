@@ -7,13 +7,13 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 import uuid
 from solders import message
-from solders.pubkey import Pubkey
-from solders.keypair import Keypair
-from solders.transaction import VersionedTransaction
+from solders.pubkey import Pubkey #type:ignore
+from solders.keypair import Keypair #type:ignore
+from solders.transaction import VersionedTransaction #type:ignore
 from solana.rpc.types import TxOpts
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Processed
-from jupiter_python_sdk.jupiter import Jupiter, Jupiter_DCA
+from jupiter_python_sdk.jupiter import Jupiter, Jupiter_DCA #type:ignore
 from dotenv import load_dotenv
 import aiohttp
 
