@@ -3,4 +3,4 @@ solders
 solana
 aiohttp
 base58
-base64
+pybase64
