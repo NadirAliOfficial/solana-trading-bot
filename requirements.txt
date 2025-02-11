@@ -1,6 +1,5 @@
-jupiter-python-sdk
-solders
-solana
-aiohttp
-base58
-pybase64
+aiohttp>=3.8.1
+python-dotenv>=1.0.0
+base58>=2.1.1
+solana>=0.28.0
+solders>=0.1.0

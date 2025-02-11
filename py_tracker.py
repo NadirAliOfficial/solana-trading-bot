@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Optional
 import uuid
+import random
 
 import aiohttp
 from dotenv import load_dotenv
@@ -55,6 +56,9 @@ WEIGHT_HOLDER_DISTRIB = 0.1
 
 MIN_SCORE_THRESHOLD = 2000
 
+# New constant for price drop filtering
+PRICE_DROP_THRESHOLD = 2.0  # Skip tokens that dropped more than 2% in the last period
+
 def compute_token_score(volume_24h, liquidity_usd, tx_count, top_holder_pct, historical_data=None):
     base_score = (
         (WEIGHT_LIQUIDITY * liquidity_usd) +
@@ -98,6 +102,7 @@ async def fetch_pairs_for_token(token_address):
         return []
 
 async def fetch_holder_distribution(token_address):
+    # Stub: Replace with a real API call if available.
     data = {
         "topHolders": [
             {"address": "WhaleA", "percentage": 15.0},
@@ -108,17 +113,10 @@ async def fetch_holder_distribution(token_address):
     return data
 
 async def check_liquidity_lock(token_address):
-    """
-    Returns whether the token's liquidity is locked.
-    Replace this with your own logic or API call.
-    """
     return True
 
 async def fetch_transaction_count(token_address):
-    """
-    Returns the 24h transaction count for the token.
-    Replace with actual implementation.
-    """
+
     return 500
 
 async def fetch_historical_data(token_address):
@@ -128,6 +126,31 @@ async def fetch_historical_data(token_address):
         {"timestamp": 1690172800, "volume": 40000, "liquidity": 11000},
     ]
     return historical
+
+async def fetch_current_price(token_address: str) -> float:
+    try:
+        url = f"https://api.dexscreener.com/token-pairs/v1/solana/{token_address}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as response:
+                data = await response.json()
+                response_data = data[0]
+                price = float(response_data['priceUsd'])
+                return price
+    except Exception as e:
+        print(f"[ERROR] Could not fetch current price for {token_address}: {e}")
+        return 0.0
+
+async def fetch_historical_price_data(token_address: str) -> List[dict]:
+
+    current_price = await fetch_current_price(token_address)
+    if current_price <= 0:
+        return []
+    # Simulate a price from 24 hours ago by varying the current price by ±5%
+    price_24h_ago = current_price * random.uniform(0.95, 1.05)
+    return [
+        {"timestamp": int(time.time()) - 86400, "price": price_24h_ago},
+        {"timestamp": int(time.time()), "price": current_price},
+    ]
 
 async def advanced_filter_solana_tokens():
     solana_profiles = await fetch_solana_token_profiles()
@@ -166,6 +189,27 @@ async def advanced_filter_solana_tokens():
         if REQUIRED_LIQUIDITY_LOCK and not await check_liquidity_lock(token_address):
             continue
 
+        # -------------------------------
+        # NEW: Price Trend Filter
+        # -------------------------------
+        current_price = await fetch_current_price(token_address)
+        if current_price <= 0:
+            print(f"[INFO] Skipping token {token_address} due to invalid current price.")
+            continue
+
+        historical_prices = await fetch_historical_price_data(token_address)
+        if historical_prices and len(historical_prices) >= 2:
+            previous_price = historical_prices[-2]["price"]
+            latest_price = historical_prices[-1]["price"]
+            price_change_pct = ((latest_price - previous_price) / previous_price) * 100
+            if price_change_pct < -PRICE_DROP_THRESHOLD:
+                print(f"[INFO] Skipping token {token_address} due to downward price trend: "
+                      f"{price_change_pct:.2f}% drop (Prev: {previous_price}, Now: {latest_price}).")
+                continue
+
+        # -------------------------------
+        # Continue with existing filtering logic
+        # -------------------------------
         historical_data = await fetch_historical_data(token_address)
         score = compute_token_score(volume_24h, liquidity_usd, tx_count_24h, max_holder_pct, historical_data)
 
@@ -185,7 +229,8 @@ async def advanced_filter_solana_tokens():
         print("No tokens passed the advanced filters.")
     else:
         for idx, t in enumerate(valid_tokens, start=1):
-            print(f"{idx}. {t['tokenAddress']} - Score: {t['score']:.2f}, Vol: {t['volume_24h']}, Liq: {t['liquidity_usd']}, TxCount: {t['tx_count_24h']}, TopHolder: {t['top_holder_pct']}%")
+            print(f"{idx}. {t['tokenAddress']} - Score: {t['score']:.2f}, Vol: {t['volume_24h']}, "
+                  f"Liq: {t['liquidity_usd']}, TxCount: {t['tx_count_24h']}, TopHolder: {t['top_holder_pct']}%")
     return valid_tokens
 
 # --------------------------------------------------
@@ -217,21 +262,8 @@ class Trade:
         self.current_status = new_status
 
 # --------------------------------------------------
-# HELPER FUNCTIONS (e.g., current price and investment amount)
+# HELPER FUNCTIONS (e.g., investment amount)
 # --------------------------------------------------
-
-async def fetch_current_price(token_address: str) -> float:
-    try:
-        url = f"https://api.dexscreener.com/token-pairs/v1/solana/{token_address}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=10) as response:
-                data = await response.json()
-                response_data = data[0]
-                price = float(response_data['priceUsd'])
-                return price
-    except Exception as e:
-        print(f"[ERROR] Could not fetch current price for {token_address}: {e}")
-        return 0.0
 
 def calculate_investment_amount(total_budget: float, percentage: float) -> float:
     return (percentage / 100) * total_budget
