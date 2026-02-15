@@ -207,28 +207,28 @@ async def advanced_filter_solana_tokens():
     print(f"Found {len(solana_profiles)} Solana token profiles.")
 
     valid_tokens = []
-    
+
     for profile in solana_profiles:
         token_address = profile.get("tokenAddress", "")
         if not token_address:
             continue
-        
+
         pairs = await fetch_pairs_for_token(token_address)
         if not pairs:
             continue
-        
+
         best_pair = max(pairs, key=lambda p: p.get("volume", {}).get("h24", 0))
-        
+
         volume_24h = best_pair.get("volume", {}).get("h24", 0)
         liquidity_usd = best_pair.get("liquidity", {}).get("usd", 0)
-        
+
         if liquidity_usd < MIN_LIQUIDITY_USD:
             continue  # fails liquidity
-        
+
         tx_count_24h = await fetch_transaction_count(token_address)
         if tx_count_24h < MIN_TX_COUNT_24H:
             continue  # fails tx count
-        
+
         holder_info = await fetch_holder_distribution(token_address)
         top_holders = holder_info.get("topHolders", [])
         if top_holders:
@@ -237,10 +237,10 @@ async def advanced_filter_solana_tokens():
                 continue  # fails top-holder distribution
         else:
             max_holder_pct = 0
-        
+
         if REQUIRED_LIQUIDITY_LOCK and not await check_liquidity_lock(token_address):
             continue  # fails liquidity lock
-        
+
         historical_data = await fetch_historical_data(token_address)
         score = compute_token_score(volume_24h, liquidity_usd, tx_count_24h, max_holder_pct, historical_data)
 
@@ -253,7 +253,7 @@ async def advanced_filter_solana_tokens():
                 "tx_count_24h": tx_count_24h,
                 "top_holder_pct": max_holder_pct
             })
-    
+
     # Sort final tokens by descending score
     valid_tokens.sort(key=lambda x: x["score"], reverse=True)
 
@@ -429,7 +429,7 @@ class TradeManager:
             milestone.is_sold = True
             milestone.sold_amount = amount
             print(f"[INFO] Sold ${amount} of {trade.token_address} at milestone {milestone.percentage_gain}%.")
-            
+
             # Check if all milestones are achieved
             if all(m.is_sold for m in trade.milestones):
                 trade.update_status("COMPLETED")
@@ -483,17 +483,17 @@ async def setup_dca(jupiter_instance: Jupiter, trade: Trade):
 async def main():
     # Initialize Trade Manager
     trade_manager = TradeManager(jupiter)
-    
+
     # Start Trade Monitoring
     asyncio.create_task(trade_manager.monitor_trades())
-    
+
     # Filter Solana Tokens
     final_list = await advanced_filter_solana_tokens()
-    
+
     # Define Budget and Investment Percentages
     total_budget = 10  # USD
     investment_percentages = [5, 10, 15, 20]
-    
+
     # Set Up Trades
     for token in final_list:
         for pct in investment_percentages:
@@ -509,7 +509,7 @@ async def main():
                 )
                 await trade_manager.add_trade(trade)
                 await setup_dca(jupiter, trade)
-    
+
     # Keep the script running
     while True:
         await asyncio.sleep(60)
