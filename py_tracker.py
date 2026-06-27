@@ -156,7 +156,7 @@ async def advanced_filter_solana_tokens():
     solana_profiles = await fetch_solana_token_profiles()
     print(f"Found {len(solana_profiles)} Solana token profiles.")
     valid_tokens = []
-    
+
     for profile in solana_profiles:
         token_address = profile.get("tokenAddress", "")
         if not token_address:
