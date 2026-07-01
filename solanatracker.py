@@ -29,8 +29,8 @@ class SolanaTracker:
             "skip_confirmation_check": False,
         }
     ) -> Union[str, Exception]:
-        commitment = options.get("commitment", "confirmed") 
-        
+        commitment = options.get("commitment", "confirmed")
+
         if commitment == "processed":
             commitment = Processed
         elif commitment == "confirmed":
@@ -45,12 +45,12 @@ class SolanaTracker:
         try:
             serialized_transaction = base64.b64decode(swap_response["txn"])
             txn = Transaction.from_bytes(serialized_transaction)
-            
+
             blockhash_resp = await self.connection.get_latest_blockhash()
             blockhash = blockhash_resp.value
-            
+
             txn.sign([self.keypair], blockhash.blockhash)
-            
+
             blockhash_with_expiry = {
                 "blockhash": blockhash.blockhash,
                 "last_valid_block_height": blockhash.last_valid_block_height,
@@ -63,7 +63,7 @@ class SolanaTracker:
             )
         except Exception as e:
             return Exception(str(e))
-        
+
     async def get_swap_instructions(
         self,
         from_token: str,
@@ -129,8 +129,8 @@ class SolanaTracker:
 
         if skip_confirmation_check:
             return str(signature)
-        
-        
+
+
         while retry_count <= confirmation_retries:
             try:
                 status_response: GetSignatureStatusesResp = await self.connection.get_signature_statuses([signature])
@@ -158,7 +158,7 @@ class SolanaTracker:
                     return Exception("Transaction expired")
 
         return Exception("Transaction failed after maximum retries")
-    
+
     @staticmethod
     def commitment_to_level(commitment: str):
         if commitment == "confirmed":
@@ -169,7 +169,7 @@ class SolanaTracker:
             return 0
         else:
             raise ValueError(f"Invalid commitment: {commitment}")
-        
+
     @staticmethod
     def commitment_str_to_level(commitment: str):
         if commitment == "TransactionConfirmationStatus.Confirmed":
@@ -180,7 +180,7 @@ class SolanaTracker:
             return 0
         else:
             raise ValueError(f"Invalid commitment: {commitment}")
-        
+
     @staticmethod
     def get_commitment_str(commitment: str):
         if commitment == "confirmed":
@@ -191,7 +191,7 @@ class SolanaTracker:
             return "TransactionConfirmationStatus.Processed"
         else:
             raise ValueError(f"Invalid commitment: {commitment}")
-        
+
     @staticmethod
     def get_commitment(commitment: str):
         if commitment == "confirmed":
@@ -202,7 +202,7 @@ class SolanaTracker:
             return "processed"
         else:
             raise ValueError(f"Invalid commitment: {commitment}")
-        
+
     @staticmethod
     async def wait(seconds: float):
         await asyncio.sleep(seconds)
